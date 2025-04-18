@@ -1,0 +1,104 @@
+---
+title: "stat"
+author: "Adel Zec"
+date: "2025-04-11"
+output: html_document
+---
+
+$H_0:  $
+```{r}
+# Model 1 for Question 1 checks average loan amount vs industry (one way anova)
+
+Stat_Dataset_1_ %>%
+  select(DisbursementGross,NAICS_Names)
+
+model1 <- aov(DisbursementGross~NAICS_Names, data = Stat_Dataset_1_)
+summary(model1)
+TukeyHSD(model1)
+
+######################################################################################################################
+# Model 2 for Question 2 is two way anova
+
+# Library 
+library(car)
+
+# Model 2 and 3 checks for term averages vs industry and status. 
+
+model2 <- lm(Term~NAICS_Names+MIS_Status+NAICS_Names*MIS_Status, data = Stat_Dataset_1_)
+Anova(model2, type = "3") # type 3 is better for unbalanced data-sets:
+
+# What the ANOVA model was answering: Does industry (NAICS_Names) and loan status (MIS_Status) significantly explain differences in loan term. 
+
+model3.test <- lm(Term~NAICS_Names+MIS_Status+NAICS_Names*MIS_Status, data = Stat_Dataset_1_) # to see if it matter?
+Anova(model3.test, type = "2")
+
+model3.test <- aov(Term~NAICS_Names+MIS_Status, data = Stat_Dataset_1_) # Which levels differ?
+TukeyHSD(model3.test)
+
+#$NAICS_Names
+#                               diff        lwr       upr     p adj
+#Construction-Agriculture -24.737951 -43.386671 -6.089231 0.0037080 -> Construction loans have shorter terms than Agriculture, significantly
+#Real estate-Agriculture  -25.730327 -47.197309 -4.263345 0.0112341 -> Real estate have shorter terms than Agriculture, significantly
+#Recreation-Agriculture    -4.548718 -26.540840 17.443404 0.9512664 -> No difference 
+#Real estate-Construction  -0.992376 -14.115637 12.130885 0.9973915 -> No difference
+#Recreation-Construction   20.189233   6.223486 34.154981 0.0011959 -> Recreation shorter terms than Construction, significantly
+#Recreation-Real estate    21.181609   3.628870 38.734348 0.0105042 -> Recreation shorter terms than Real estate, significantly
+
+######################################################################################################################
+# Increasing the depths
+
+# We see the term loan in months max and min
+max(Stat_Dataset_1_$Term) # 309 months is max
+min(Stat_Dataset_1_$Term) # 1 month in min
+
+######################################################################################################################
+
+# Now we create a new column (TermGroup) to see if 
+
+Stat_Dataset_1_ <- Stat_Dataset_1_ %>%
+  mutate(
+    TermGroup = case_when(
+      Term < 103 ~ "Short",
+      Term >= 103 & Term <= 206 ~ "Mid",
+      Term > 206 & Term <= 309 ~ "Long",
+      TRUE ~ NA_character_
+    )
+  ) # we create an new column that shows either or not the loan term is short, middle or long term 
+
+######################################################################################################################
+
+# Crosstab and chi-square test
+table_term_status <- table(Stat_Dataset_1_$TermGroup, Stat_Dataset_1_$MIS_Status)
+
+# > table_term_status
+#       
+#        CHGOFF P I F   Charge-off Rate
+#  Long       6   113 -> 5.0%
+#  Mid       21    89 -> 19.1%
+#  Short    377   635 -> 37.3%
+
+chisq.test(table_term_status) # p-value is less than .5 
+
+######################################################################################################################
+
+Stat_Dataset_1_ <- Stat_Dataset_1_ %>%
+  mutate(
+    Defauled = case_when(
+      MIS_Status == "P I F" ~ 0,
+      MIS_Status == "CHGOFF" ~ 1
+    )
+  )
+
+real.model2 <- aov(Defauled~TermGroup, data = Stat_Dataset_1_)
+summary(real.model2)
+
+TukeyHSD(real.model2)
+
+#$TermGroup
+#                diff         lwr       upr     p adj
+#Mid-Long   0.1404889 -0.00153723 0.2825151 0.0532894
+#Short-Long 0.3221095  0.21804848 0.4261705 0.0000000
+#Short-Mid  0.1816206  0.07381770 0.2894234 0.0002401
+
+```
+
