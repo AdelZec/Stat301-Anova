@@ -1,0 +1,79 @@
+---
+title: "Stat 301 Project"
+author: "Alyson Her"
+date: "2025-04-08"
+output: html_document
+---
+## Dataset
+```{r}
+library(tidyverse)
+library(car)
+library(readr)
+Stat_Dataset <- read_csv("C:/Users/heral/Downloads/Spring 2025 Class/Analysis V  & M/Stat 301 Data project/Offical_Stat_Dataset.csv")
+#Note: data is unbalanced
+```
+
+
+## Test 1: Does the average loan amount differs significantly across industries?
+$H_0: 𝜇_c=𝜇_a=𝜇_r=𝜇_n$
+$H_a: at least 2 means are different 
+$𝜇_c$- mean loan amount for Construction
+$𝜇_a$- mean loan amount for Agriculture
+$𝜇_r$- mean loan amount for Real estate
+$𝜇_n$- mean loan amount for Recreation 
+```{r}
+names(Stat_Dataset)
+Stat_Dataset
+
+ 
+Avg_Industries<- Stat_Dataset %>% 
+  select(NAICS_Names, DisbursementGross)
+Avg_Industries
+
+
+mod<- (aov(DisbursementGross~NAICS_Names, data= Avg_Industries)) 
+summary(mod)
+
+
+TukeyHSD(mod)
+```
+(F= 8.394, P-value= 0): Reject the null, there is enough evidence to suggest that the average loan amount differs significantly across industries.
+Based on the Post HOC test between these industries Recreation-Construction, and Recreation-Real estate showed sig differences.
+
+
+```{r}
+Stat<- read_csv("C:/Users/heral/Downloads/Stat_Dataset (1).csv")
+mod<- (aov(DisbursementGross~NAICS_Names, data= Stat)) 
+summary(mod)
+```
+
+
+## Test 2: Is there a difference in loan terms and across industries and loan status?
+Loan Status:
+$H_0: 𝜇_1=𝜇_2$
+$H_a: 𝜇_1\neq𝜇_2$ 
+$𝜇_1$- mean loan term based on PIF status
+$𝜇_2$- mean loan term based on CHGOFF status
+(F=163.4075, P=0): Reject the null. There is enough evidence to suggest that the mean loan term are sig different between PIF and CHGOFF loan status 
+
+Industries: 
+$H_0: 𝜇_c=𝜇_a=𝜇_r=𝜇_n$
+$H_a: at least 2 means are different 
+$𝜇_c$- mean loan term for Construction
+$𝜇_a$- mean loan term for Agriculture
+$𝜇_r$- mean loan term for Real estate
+$𝜇_n$- mean loan term for Recreation 
+(F=4.36, P=0.005): Reject the null. There is enough evidence to suggest that that the mean loan term are sig different between industries 
+
+
+Interaction (Loan Status : Industries):
+H_0: There is no interaction between loan status and industries
+H_a: There is an interaction between loan status and industries
+(F=0.205, P=0.89): Fail to reject the null. There is no interaction between loan status and industry. The industry cannot predict the loan status. In the chart the the industries are fairly similar  
+```{r}
+anov<- lm(Term~MIS_Status+NAICS_Names+MIS_Status*NAICS_Names, data= Stat_Dataset)
+Anova(anov, type="2")
+
+model3.test <- aov(Term~NAICS_Names+MIS_Status, data = Stat_Dataset) # Which levels differ?
+TukeyHSD(model3.test)
+```
